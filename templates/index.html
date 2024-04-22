@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Performance Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .chart-container {
+            width: 80%;
+            margin: 0 auto;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Track Trailing 12-Months Stock Performance (% Change)</h1>
+    <form action="/" method="post">
+        <label for="symbols">Stock Symbols (comma-separated, e.g., AAPL,MSFT):</label>
+        <input type="text" id="symbols" name="symbols" placeholder="AAPL,MSFT">
+        <button type="submit">Submit</button>
+    </form>
+
+    <div class="chart-container">
+        <canvas id="stockChart"></canvas>
+    </div>
+
+    <script>
+        const ctx = document.getElementById('stockChart').getContext('2d');
+        const rawData = {{ data | tojson }};
+        if (Object.keys(rawData).length > 0) {
+            const datasets = Object.keys(rawData).map(symbol => ({
+                label: `${symbol} Percentage Change`,
+                data: rawData[symbol][0],
+                borderColor: `rgb(${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)})`,
+                fill: false,
+                tension: 0.1
+            }));
+            const labels = rawData[Object.keys(rawData)[0]][1]; // Assume all symbols have the same months
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: datasets
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Percentage Change (%)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
