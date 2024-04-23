@@ -26,13 +26,12 @@ def get_stock_data(symbol):
     stock_data = yf.Ticker(symbol)
     hist_data = stock_data.history(period="1y", interval="1mo")
     initial_value = hist_data['Close'].iloc[0]
-    hist_data['Percentage Change'] = (hist_data['Close'] - initial_value) / initial_value
-    return hist_data['Percentage Change'].dropna().tolist(), hist_data.index.strftime('%Y-%m-%d').tolist()
+    hist_data['Percentage Change'] = (hist_data['Close'] - initial_value) / initial_value * 100
+    return hist_data['Percentage Change'].dropna().tolist(), hist_data.index.strftime('%Y-%m').tolist()
 
 @app.route('/', methods=['GET', 'POST'])
 def home():
     real_time_data = False
-    data = None
     if request.method == 'POST':
         symbols = request.form.get('symbols', 'SPY')
         if 'SPY' not in symbols:
@@ -49,7 +48,8 @@ def home():
     # Retrieve the last three searches from the database
     last_three_searches = StockSearch.query.order_by(StockSearch.id.desc()).limit(3).all()
 
-    return render_template('index.html', data=data, last_searches=last_three_searches, real_time_data=real_time_data)
+    return render_template('index.html', data=data if request.method == 'POST' else None, 
+                           last_searches=last_three_searches, real_time_data=real_time_data)
 
 if __name__ == '__main__':
     app.run(debug=True)
