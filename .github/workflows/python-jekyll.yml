@@ -28,6 +28,7 @@ jobs:
 
     - name: Install dependencies
       run: |
+        chmod +x venv/bin/pip
         venv/bin/pip install -r requirements.txt
 
     - name: Run Python Script
