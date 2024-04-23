@@ -1,9 +1,13 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stock Performance Tracker</title>
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.11.3/css/jquery.dataTables.min.css">
+    <script src="https://code.jquery.com/jquery-3.5.1.js"></script>
+    <script src="https://cdn.datatables.net/1.11.3/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
@@ -12,10 +16,23 @@
             padding: 20px;
             background-color: #f4f4f4;
         }
-        .chart-container {
+        .chart-container, .table-container {
             width: 80%;
-            margin: 0 auto;
-            margin-top: 20px;
+            margin: 20px auto;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+            text-align: left;
+            padding: 8px;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        table.dataTable {
+            width: 100% !important;
         }
     </style>
 </head>
@@ -23,15 +40,51 @@
     <h1>Track Trailing 12-Months Stock Performance (% Change)</h1>
     <form action="/" method="post">
         <label for="symbols">Stock Symbols (comma-separated, e.g., AAPL,MSFT):</label>
-        <input type="text" id="symbols" name="symbols" placeholder="AAPL,MSFT">
+        <input type="text" id="symbols" name="symbols" placeholder="AAPL,MSFT" required>
         <button type="submit">Submit</button>
     </form>
+
+    {% if real_time_data %}
+        <p>Real-time connection established with stock data...</p>
+    {% endif %}
+
+    <div class="table-container">
+        <h2>Last 3 Searches:</h2>
+        <table id="searchTable" class="display">
+            <thead>
+                <tr>
+                    <th>Search Term</th>
+                    <th>Date</th>
+                    <th>Results</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for search in last_searches %}
+                    <tr>
+                        <td>{{ search.symbols }}</td>
+                        <td>{{ search.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                        <td>
+                            {% for symbol, values in search.search_results.items() %}
+                                <strong>{{ symbol }}:</strong> {{ values[0] | join(", ") }}<br>
+                            {% endfor %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 
     <div class="chart-container">
         <canvas id="stockChart"></canvas>
     </div>
 
     <script>
+        $(document).ready(function() {
+            $('#searchTable').DataTable({
+                "order": [[1, "desc"]]
+            });
+        });
+
         const ctx = document.getElementById('stockChart').getContext('2d');
         const rawData = {{ data | tojson }};
         if (Object.keys(rawData).length > 0) {
@@ -42,7 +95,7 @@
                 fill: false,
                 tension: 0.1
             }));
-            const labels = rawData[Object.keys(rawData)[0]][1]; // Assume all symbols have the same months
+            const labels = rawData[Object.keys(rawData)[0]][1];
             new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -58,10 +111,13 @@
                                 text: 'Percentage Change (%)'
                             }
                         }
-                    }
+                    },
+                    responsive: true,
+                    maintainAspectRatio: false
                 }
             });
         }
     </script>
 </body>
 </html>
+
