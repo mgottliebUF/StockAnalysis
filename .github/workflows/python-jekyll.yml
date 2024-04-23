@@ -23,17 +23,13 @@ jobs:
         python-version: '3.10'
 
     - name: Create virtual environment
-      run: |
-        python -m venv venv
+      run: python -m venv venv
 
     - name: Install dependencies
-      run: |
-        chmod +x venv/bin/pip
-        venv/bin/pip install -r requirements.txt
+      run: venv/bin/pip install -r requirements.txt
 
     - name: Run Python Script
-      run: |
-        venv/bin/python app.py  # Replace this with your specific Python script
+      run: venv/bin/python your_script.py  # Replace this with your specific Python script
 
     - name: Build Jekyll site
       run: |
@@ -45,5 +41,4 @@ jobs:
       run: ls venv/bin
 
     - name: Check installed packages
-      run: |
-        venv/bin/pip freeze
+      run: venv/bin/pip freeze
