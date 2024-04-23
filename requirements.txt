@@ -1,6 +1,6 @@
 #appdirs                1.4.4
-attrs                  21.2.0
-beautifulsoup4         4.12.3
+#attrs                  21.2.0
+#beautifulsoup4         4.12.3
 blinker                1.7.0
 certifi                2020.6.20
 chardet                4.0.0
