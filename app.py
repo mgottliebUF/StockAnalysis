@@ -49,6 +49,31 @@ def get_stock_data(symbol):
 
     return hist_percentage_change.tolist(), hist_dates, future_prices.tolist(), future_dates
 
+def connect_rabbitmq():
+    credentials = pika.PlainCredentials('guest', 'guest')
+    connection = pika.BlockingConnection(
+        pika.ConnectionParameters(host='localhost', credentials=credentials))
+    channel = connection.channel()
+    channel.queue_declare(queue='stock_searches')
+    return channel
+
+def send_message_to_queue(symbol_data):
+    channel = connect_rabbitmq()
+    channel.basic_publish(exchange='',
+                          routing_key='stock_searches',
+                          body=json.dumps(symbol_data))
+    channel.close()
+
+def consume_messages():
+    channel = connect_rabbitmq()
+
+    def callback(ch, method, properties, body):
+        print("Received %r" % json.loads(body))
+
+    channel.basic_consume(queue='stock_searches', on_message_callback=callback, auto_ack=True)
+    print('Waiting for messages. To exit press CTRL+C')
+    channel.start_consuming()
+
 @app.route('/', methods=['GET', 'POST'])
 def home():
     data = {}
@@ -62,6 +87,7 @@ def home():
         new_search = StockSearch(symbols=symbols, search_results=search_results_json)
         db.session.add(new_search)
         db.session.commit()
+        send_message_to_queue(data)
         real_time_data = True
         news_articles = fetch_news(",".join(symbol_list))
 
