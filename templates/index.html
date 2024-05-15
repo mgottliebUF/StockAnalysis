@@ -3,157 +3,442 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stock Performance Tracker</title>
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.11.3/css/jquery.dataTables.min.css">
-    <script src="https://code.jquery.com/jquery-3.5.1.js"></script>
-    <script src="https://cdn.datatables.net/1.11.3/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <title>ML Market Modeling and Prediction</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: #f4f4f4;
+            background: url('/static/background.jpg') no-repeat center center fixed;
+            background-size: cover;
+            color: white;
         }
         .container {
-            width: 80%;
-            margin: 20px auto;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 50px;
         }
-        table, th, td, ul, li {
-            border: 1px solid #ddd;
-            text-align: left;
-            padding: 8px;
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
         }
-        th {
-            background-color: #f2f2f2;
+        .loading {
+            display: none;
+            text-align: center;
         }
-        tr:nth-child(even), li:nth-child(even) {
-            background-color: #f9f9f9;
+        .results {
+            display: none;
         }
-        ul {
-            list-style: none;
-            padding: 0;
+        .trade-log {
+            margin-top: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            color: black;
+            padding: 15px;
+            border-radius: 10px;
         }
-        li {
-            margin-bottom: 10px;
+        .trade-log h2 {
+            text-align: center;
         }
-        table.dataTable {
-            width: 100% !important;
+        .trade-log table {
+            width: 100%;
+            margin-top: 20px;
+        }
+        .trade-log table th, .trade-log table td {
+            padding: 10px;
+            text-align: center;
+        }
+        .trade-log button {
+            margin-top: 20px;
+            display: block;
+            width: 100%;
+        }
+        .positive {
+            color: green;
+        }
+        .negative {
+            color: red;
         }
     </style>
 </head>
 <body>
-    <h1>Track Trailing 12-Months Stock Performance (% Change)</h1>
-    <form action="/" method="post" class="container">
-        <label for="symbols">Stock Symbols (comma-separated, e.g., AAPL,MSFT):</label>
-        <input type="text" id="symbols" name="symbols" placeholder="AAPL,MSFT" required>
-        <button type="submit">Submit</button>
-    </form>
-
-    {% if real_time_data %}
-        <p class="container">Real-time connection established with stock data...</p>
-    {% endif %}
-
     <div class="container">
-        <h2>Last 3 Searches:</h2>
-        <table id="searchTable" class="display">
-            <thead>
-                <tr>
-                    <th>Search Term</th>
-                    <th>Date</th>
-                    <th>Results</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for symbols, search_results, created_at in last_searches %}
+        <h1>ML Market Modeling and Prediction</h1>
+        <form id="stockForm">
+            <div class="form-group">
+                <label for="ticker">Stock Ticker Symbol:</label>
+                <input type="text" class="form-control" id="ticker" name="ticker" required>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Analyze</button>
+        </form>
+        <form id="tradeForm" class="mt-4">
+            <h2>Add Trade</h2>
+            <div class="form-group">
+                <label for="tradeTicker">Stock Ticker Symbol:</label>
+                <input type="text" class="form-control" id="tradeTicker" name="tradeTicker" required>
+            </div>
+            <div class="form-group">
+                <label for="buyPrice">Buy Price:</label>
+                <input type="number" step="0.01" class="form-control" id="buyPrice" name="buyPrice" required>
+            </div>
+            <div class="form-group">
+                <label for="shares">Shares:</label>
+                <input type="number" class="form-control" id="shares" name="shares" required>
+            </div>
+            <button type="submit" class="btn btn-success btn-block">Add Trade</button>
+        </form>
+        <div class="loading mt-4">
+            <p>Loading...</p>
+            <!-- <img src="/static/loading.gif" alt="Loading..."> -->
+        </div>
+        <div class="results">
+            <h2>Results</h2>
+            <p>Linear Regression Model (1 Year):</p>
+            <p>Intercept: <span id="intercept_lr"></span></p>
+            <p>Slope: <span id="slope_lr"></span></p>
+            <p>Future Price in 1 Month: <span id="future_price_1m_lr"></span></p>
+            <p>Expected Percentage Increase in 1 Month: <span id="percentage_increase_1m_lr" class="percentage-change"></span>%</p>
+            <p>Future Price in 2 Months: <span id="future_price_2m_lr"></span></p>
+            <p>Expected Percentage Increase in 2 Months: <span id="percentage_increase_2m_lr" class="percentage-change"></span>%</p>
+            <p>Future Price in 3 Months: <span id="future_price_3m_lr"></span></p>
+            <p>Expected Percentage Increase in 3 Months: <span id="percentage_increase_3m_lr" class="percentage-change"></span>%</p>
+
+            <h2>Support Vector Machine Model (1 Year):</h2>
+            <p>Kernel: RBF</p>
+            <p>Future Price in 1 Month: <span id="future_price_1m_svm"></span></p>
+            <p>Expected Percentage Increase in 1 Month: <span id="percentage_increase_1m_svm" class="percentage-change"></span>%</p>
+            <p>Future Price in 2 Months: <span id="future_price_2m_svm"></span></p>
+            <p>Expected Percentage Increase in 2 Months: <span id="percentage_increase_2m_svm" class="percentage-change"></span>%</p>
+            <p>Future Price in 3 Months: <span id="future_price_3m_svm"></span></p>
+            <p>Expected Percentage Increase in 3 Months: <span id="percentage_increase_3m_svm" class="percentage-change"></span>%</p>
+
+            <h2>Support Vector Machine Model (5 Years):</h2>
+            <p>Kernel: RBF</p>
+            <p>Future Price in 5 Years: <span id="future_price_5y_svm"></span></p>
+
+            <h2>K-Nearest Neighbors Model (1 Year):</h2>
+            <p>Future Price in 1 Year: <span id="future_price_1y_knn"></span></p>
+
+            <h2>K-Nearest Neighbors Model (5 Years):</h2>
+            <p>Future Price in 5 Years: <span id="future_price_5y_knn"></span></p>
+
+            <h2>Decision Tree Model (1 Year):</h2>
+            <p>Future Price in 1 Month: <span id="future_price_1m_dt"></span></p>
+            <p>Expected Percentage Increase in 1 Month: <span id="percentage_increase_1m_dt" class="percentage-change"></span>%</p>
+            <p>Future Price in 2 Months: <span id="future_price_2m_dt"></span></p>
+            <p>Expected Percentage Increase in 2 Months: <span id="percentage_increase_2m_dt" class="percentage-change"></span>%</p>
+            <p>Future Price in 3 Months: <span id="future_price_3m_dt"></span></p>
+            <p>Expected Percentage Increase in 3 Months: <span id="percentage_increase_3m_dt" class="percentage-change"></span>%</p>
+
+            <h2>Random Forest Model (1 Year):</h2>
+            <p>Future Price in 1 Month: <span id="future_price_1m_rf"></span></p>
+            <p>Expected Percentage Increase in 1 Month: <span id="percentage_increase_1m_rf" class="percentage-change"></span>%</p>
+            <p>Future Price in 2 Months: <span id="future_price_2m_rf"></span></p>
+            <p>Expected Percentage Increase in 2 Months: <span id="percentage_increase_2m_rf" class="percentage-change"></span>%</p>
+            <p>Future Price in 3 Months: <span id="future_price_3m_rf"></span></p>
+            <p>Expected Percentage Increase in 3 Months: <span id="percentage_increase_3m_rf" class="percentage-change"></span>%</p>
+
+            <h2>Gradient Boosting Model (1 Year):</h2>
+            <p>Future Price in 1 Month: <span id="future_price_1m_gb"></span></p>
+            <p>Expected Percentage Increase in 1 Month: <span id="percentage_increase_1m_gb" class="percentage-change"></span>%</p>
+            <p>Future Price in 2 Months: <span id="future_price_2m_gb"></span></p>
+            <p>Expected Percentage Increase in 2 Months: <span id="percentage_increase_2m_gb" class="percentage-change"></span>%</p>
+            <p>Future Price in 3 Months: <span id="future_price_3m_gb"></span></p>
+            <p>Expected Percentage Increase in 3 Months: <span id="percentage_increase_3m_gb" class="percentage-change"></span>%</p>
+
+            <h2>Neural Network Model (1 Year):</h2>
+            <p>Future Price in 1 Month: <span id="future_price_1m_mlp"></span></p>
+            <p>Expected Percentage Increase in 1 Month: <span id="percentage_increase_1m_mlp" class="percentage-change"></span>%</p>
+            <p>Future Price in 2 Months: <span id="future_price_2m_mlp"></span></p>
+            <p>Expected Percentage Increase in 2 Months: <span id="percentage_increase_2m_mlp" class="percentage-change"></span>%</p>
+            <p>Future Price in 3 Months: <span id="future_price_3m_mlp"></span></p>
+            <p>Expected Percentage Increase in 3 Months: <span id="percentage_increase_3m_mlp" class="percentage-change"></span>%</p>
+
+            <h2>ARIMA Model (1 Year):</h2>
+            <p>Future Price in 1 Month: <span id="future_price_1m_arima"></span></p>
+            <p>Expected Percentage Increase in 1 Month: <span id="percentage_increase_1m_arima" class="percentage-change"></span>%</p>
+            <p>Future Price in 2 Months: <span id="future_price_2m_arima"></span></p>
+            <p>Expected Percentage Increase in 2 Months: <span id="percentage_increase_2m_arima" class="percentage-change"></span>%</p>
+            <p>Future Price in 3 Months: <span id="future_price_3m_arima"></span></p>
+            <p>Expected Percentage Increase in 3 Months: <span id="percentage_increase_3m_arima" class="percentage-change"></span>%</p>
+
+            <h2>Exponential Smoothing Model (1 Year):</h2>
+            <p>Future Price in 1 Month: <span id="future_price_1m_es"></span></p>
+            <p>Expected Percentage Increase in 1 Month: <span id="percentage_increase_1m_es" class="percentage-change"></span>%</p>
+            <p>Future Price in 2 Months: <span id="future_price_2m_es"></span></p>
+            <p>Expected Percentage Increase in 2 Months: <span id="percentage_increase_2m_es" class="percentage-change"></span>%</p>
+            <p>Future Price in 3 Months: <span id="future_price_3m_es"></span></p>
+            <p>Expected Percentage Increase in 3 Months: <span id="percentage_increase_3m_es" class="percentage-change"></span>%</p>
+
+            <p>Volatility: <span id="volatility"></span></p>
+            <p>Momentum: <span id="momentum"></span></p>
+            <p>Mean Reversion: <span id="mean_reversion"></span></p>
+            <p>Volatility Clustering: <span id="volatility_clustering"></span></p>
+            <p>Fear and Greed Index: <span id="fear_greed_index"></span></p>
+            <p>PE Ratio: <span id="pe_ratio"></span></p>
+            <p>Market Cap: <span id="market_cap"></span></p>
+            <p>Volume: <span id="volume"></span></p>
+            <p>Analysis: <span id="analysis"></span></p>
+            <p>Elapsed Time: <span id="elapsed_time"></span> seconds</p>
+
+            <h2>Graphs</h2>
+            <h3>1 Year Linear Regression</h3>
+            <img id="plot_1y" src="" alt="1 Year Linear Regression Plot" class="img-fluid">
+            <h3>5 Years Linear Regression</h3>
+            <img id="plot_5y" src="" alt="5 Years Linear Regression Plot" class="img-fluid">
+            <h3>1 Year SVM</h3>
+            <img id="plot_svm_1y" src="" alt="1 Year SVM Plot" class="img-fluid">
+            <h3>5 Years SVM</h3>
+            <img id="plot_svm_5y" src="" alt="5 Years SVM Plot" class="img-fluid">
+            <h3>1 Year KNN</h3>
+            <img id="plot_knn_1y" src="" alt="1 Year KNN Plot" class="img-fluid">
+            <h3>5 Years KNN</h3>
+            <img id="plot_knn_5y" src="" alt="5 Years KNN Plot" class="img-fluid">
+            <h3>1 Year Decision Tree</h3>
+            <img id="plot_dt_1y" src="" alt="1 Year Decision Tree Plot" class="img-fluid">
+            <h3>1 Year Random Forest</h3>
+            <img id="plot_rf_1y" src="" alt="1 Year Random Forest Plot" class="img-fluid">
+            <h3>1 Year Gradient Boosting</h3>
+            <img id="plot_gb_1y" src="" alt="1 Year Gradient Boosting Plot" class="img-fluid">
+            <h3>1 Year Neural Network</h3>
+            <img id="plot_mlp_1y" src="" alt="1 Year Neural Network Plot" class="img-fluid">
+            <h3>1 Year ARIMA</h3>
+            <img id="plot_arima_1y" src="" alt="1 Year ARIMA Plot" class="img-fluid">
+            <h3>1 Year Exponential Smoothing</h3>
+            <img id="plot_es_1y" src="" alt="1 Year Exponential Smoothing Plot" class="img-fluid">
+        </div>
+        <div class="trade-log">
+            <h2>Trade Log</h2>
+            <table>
+                <thead>
                     <tr>
-                        <td>{{ symbols }}</td>
-                        <td>{{ created_at }}</td>
-                        <td>
-                            {% for symbol, values in search_results.items() %}
-                                <strong>{{ symbol }}:</strong> {{ values[0] | join(", ") }}<br>
-                            {% endfor %}
-                        </td>
+                        <th>Ticker</th>
+                        <th>Buy Price</th>
+                        <th>Shares</th>
+                        <th>Current Price</th>
+                        <th>Percentage Change</th>
+                        <th>Profit</th>
+                        <th>Actions</th>
                     </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-
-    <div class="container">
-        <h2>Latest Financial News:</h2>
-        <ul>
-            {% for article in news_articles %}
-                <li>
-                    <a href="{{ article['url'] }}" target="_blank">{{ article['title'] }}</a>
-                    <p>{{ article['description'] }}</p>
-                </li>
-            {% endfor %}
-        </ul>
-    </div>
-
-    <div class="container">
-        <canvas id="stockChart"></canvas>
+                </thead>
+                <tbody id="tradeLogBody">
+                    <!-- Trades will be dynamically added here -->
+                </tbody>
+            </table>
+            <button id="clearTrades" class="btn btn-danger">Clear All Trades</button>
+            <button id="calculateSharpe" class="btn btn-info">Calculate Sharpe Ratio</button>
+            <button id="resetTotalProfit" class="btn btn-warning">Reset Total Profit</button>
+        </div>
+        <div class="total-profit mt-4">
+            <h2>Total Profit: <span id="total_profit" class="positive"></span></h2>
+        </div>
     </div>
 
     <script>
-        $(document).ready(function() {
-            $('#searchTable').DataTable({
-                "order": [[1, "desc"]]
+        $('#stockForm').on('submit', function(e) {
+            e.preventDefault();
+            $('.loading').show();
+            $('.results').hide();
+
+            const ticker = $('#ticker').val();
+
+            $.ajax({
+                url: '/analyze',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ ticker: ticker }),
+                success: function(response) {
+                    $('.loading').hide();
+                    $('.results').show();
+                    $('#intercept_lr').text(response.intercept_lr);
+                    $('#slope_lr').text(response.slope_lr);
+                    $('#future_price_1m_lr').text(response.future_price_1m_lr.toFixed(2));
+                    $('#percentage_increase_1m_lr').text(response.percentage_increase_1m_lr.toFixed(2));
+                    $('#future_price_2m_lr').text(response.future_price_2m_lr.toFixed(2));
+                    $('#percentage_increase_2m_lr').text(response.percentage_increase_2m_lr.toFixed(2));
+                    $('#future_price_3m_lr').text(response.future_price_3m_lr.toFixed(2));
+                    $('#percentage_increase_3m_lr').text(response.percentage_increase_3m_lr.toFixed(2));
+                    $('#future_price_1m_svm').text(response.future_price_1m_svm.toFixed(2));
+                    $('#percentage_increase_1m_svm').text(response.percentage_increase_1m_svm.toFixed(2));
+                    $('#future_price_2m_svm').text(response.future_price_2m_svm.toFixed(2));
+                    $('#percentage_increase_2m_svm').text(response.percentage_increase_2m_svm.toFixed(2));
+                    $('#future_price_3m_svm').text(response.future_price_3m_svm.toFixed(2));
+                    $('#percentage_increase_3m_svm').text(response.percentage_increase_3m_svm.toFixed(2));
+                    $('#future_price_5y_svm').text(response.future_price_5y_svm);
+                    $('#future_price_1y_knn').text(response.future_price_1y_knn);
+                    $('#future_price_5y_knn').text(response.future_price_5y_knn);
+                    $('#future_price_1m_dt').text(response.future_price_1m_dt.toFixed(2));
+                    $('#percentage_increase_1m_dt').text(response.percentage_increase_1m_dt.toFixed(2));
+                    $('#future_price_2m_dt').text(response.future_price_2m_dt.toFixed(2));
+                    $('#percentage_increase_2m_dt').text(response.percentage_increase_2m_dt.toFixed(2));
+                    $('#future_price_3m_dt').text(response.future_price_3m_dt.toFixed(2));
+                    $('#percentage_increase_3m_dt').text(response.percentage_increase_3m_dt.toFixed(2));
+                    $('#future_price_1m_rf').text(response.future_price_1m_rf.toFixed(2));
+                    $('#percentage_increase_1m_rf').text(response.percentage_increase_1m_rf.toFixed(2));
+                    $('#future_price_2m_rf').text(response.future_price_2m_rf.toFixed(2));
+                    $('#percentage_increase_2m_rf').text(response.percentage_increase_2m_rf.toFixed(2));
+                    $('#future_price_3m_rf').text(response.future_price_3m_rf.toFixed(2));
+                    $('#percentage_increase_3m_rf').text(response.percentage_increase_3m_rf.toFixed(2));
+                    $('#future_price_1m_gb').text(response.future_price_1m_gb.toFixed(2));
+                    $('#percentage_increase_1m_gb').text(response.percentage_increase_1m_gb.toFixed(2));
+                    $('#future_price_2m_gb').text(response.future_price_2m_gb.toFixed(2));
+                    $('#percentage_increase_2m_gb').text(response.percentage_increase_2m_gb.toFixed(2));
+                    $('#future_price_3m_gb').text(response.future_price_3m_gb.toFixed(2));
+                    $('#percentage_increase_3m_gb').text(response.percentage_increase_3m_gb.toFixed(2));
+                    $('#future_price_1m_mlp').text(response.future_price_1m_mlp.toFixed(2));
+                    $('#percentage_increase_1m_mlp').text(response.percentage_increase_1m_mlp.toFixed(2));
+                    $('#future_price_2m_mlp').text(response.future_price_2m_mlp.toFixed(2));
+                    $('#percentage_increase_2m_mlp').text(response.percentage_increase_2m_mlp.toFixed(2));
+                    $('#future_price_3m_mlp').text(response.future_price_3m_mlp.toFixed(2));
+                    $('#percentage_increase_3m_mlp').text(response.percentage_increase_3m_mlp.toFixed(2));
+                    $('#future_price_1m_arima').text(response.future_price_1m_arima.toFixed(2));
+                    $('#percentage_increase_1m_arima').text(response.percentage_increase_1m_arima.toFixed(2));
+                    $('#future_price_2m_arima').text(response.future_price_2m_arima.toFixed(2));
+                    $('#percentage_increase_2m_arima').text(response.percentage_increase_2m_arima.toFixed(2));
+                    $('#future_price_3m_arima').text(response.future_price_3m_arima.toFixed(2));
+                    $('#percentage_increase_3m_arima').text(response.percentage_increase_3m_arima.toFixed(2));
+                    $('#future_price_1m_es').text(response.future_price_1m_es.toFixed(2));
+                    $('#percentage_increase_1m_es').text(response.percentage_increase_1m_es.toFixed(2));
+                    $('#future_price_2m_es').text(response.future_price_2m_es.toFixed(2));
+                    $('#percentage_increase_2m_es').text(response.percentage_increase_2m_es.toFixed(2));
+                    $('#future_price_3m_es').text(response.future_price_3m_es.toFixed(2));
+                    $('#percentage_increase_3m_es').text(response.percentage_increase_3m_es.toFixed(2));
+                    $('#volatility').text(response.volatility.toFixed(2));
+                    $('#momentum').text(response.momentum.toFixed(2));
+                    $('#mean_reversion').text(response.mean_reversion.toFixed(2));
+                    $('#volatility_clustering').text(response.volatility_clustering.toFixed(2));
+                    $('#fear_greed_index').text(response.fear_greed_index);
+                    $('#pe_ratio').text(response.pe_ratio);
+                    $('#market_cap').text(response.market_cap);
+                    $('#volume').text(response.volume);
+                    $('#analysis').text(response.analysis);
+                    $('#elapsed_time').text(response.elapsed_time.toFixed(2));
+                    $('#plot_1y').attr('src', 'data:image/png;base64,' + response.plot_url_1y);
+                    $('#plot_5y').attr('src', 'data:image/png;base64,' + response.plot_url_5y);
+                    $('#plot_svm_1y').attr('src', 'data:image/png;base64,' + response.plot_url_svm_1y);
+                    $('#plot_svm_5y').attr('src', 'data:image/png;base64,' + response.plot_url_svm_5y);
+                    $('#plot_knn_1y').attr('src', 'data:image/png;base64,' + response.plot_url_knn_1y);
+                    $('#plot_knn_5y').attr('src', 'data:image/png;base64,' + response.plot_url_knn_5y);
+                    $('#plot_dt_1y').attr('src', 'data:image/png;base64,' + response.plot_url_dt_1y);
+                    $('#plot_rf_1y').attr('src', 'data:image/png;base64,' + response.plot_url_rf_1y);
+                    $('#plot_gb_1y').attr('src', 'data:image/png;base64,' + response.plot_url_gb_1y);
+                    $('#plot_mlp_1y').attr('src', 'data:image/png;base64,' + response.plot_url_mlp_1y);
+                    $('#plot_arima_1y').attr('src', 'data:image/png;base64,' + response.plot_url_arima_1y);
+                    $('#plot_es_1y').attr('src', 'data:image/png;base64,' + response.plot_url_es_1y);
+
+                    $('.percentage-change').each(function() {
+                        const value = parseFloat($(this).text());
+                        if (value > 0) {
+                            $(this).addClass('positive').removeClass('negative');
+                        } else {
+                            $(this).addClass('negative').removeClass('positive');
+                        }
+                    });
+                }
             });
         });
 
-        const rawData = {{ data | tojson }};
-        const ctx = document.getElementById('stockChart').getContext('2d');
+        $('#tradeForm').on('submit', function(e) {
+            e.preventDefault();
+            const tradeTicker = $('#tradeTicker').val();
+            const buyPrice = $('#buyPrice').val();
+            const shares = $('#shares').val();
 
-        if (Object.keys(rawData).length > 0) {
-            // Using the first symbol for the example, but this should be adapted if multiple charts are desired
-            const symbol = Object.keys(rawData)[0];
-            const historicalData = rawData[symbol][0];
-            const historicalDates = rawData[symbol][1];
-            const predictedChanges = rawData[symbol][2].map(price => 
-                (price / rawData[symbol][0][0] - 1) * 100
-            );
-            const futureDates = rawData[symbol][3];
+            $.ajax({
+                url: '/trades',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ ticker: tradeTicker, buy_price: parseFloat(buyPrice), shares: parseInt(shares) }),
+                success: function(response) {
+                    alert(response.message);
+                    updateTradeLog();
+                }
+            });
+        });
 
-            // Labels are historical dates followed by future dates
-            const labels = [...historicalDates, ...futureDates];
-
-            // Data is historical percentage changes followed by predicted percentage changes
-            const data = [...historicalData, ...predictedChanges];
-
-            new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: symbol + ' Stock Performance',
-                        data: data,
-                        borderColor: 'rgb(75, 192, 192)',
-                        fill: false,
-                    }]
-                },
-                options: {
-                    scales: {
-                        x: {
-                            title: {
-                                display: true,
-                                text: 'Date'
-                            }
-                        },
-                        y: {
-                            title: {
-                                display: true,
-                                text: 'Percentage Change (%)'
-                            },
-                            beginAtZero: false
-                        }
-                    },
-                    responsive: true,
-                    maintainAspectRatio: false
+        function updateTradeLog() {
+            $.ajax({
+                url: '/trades',
+                type: 'GET',
+                success: function(response) {
+                    const tradeLogBody = $('#tradeLogBody');
+                    tradeLogBody.empty();
+                    response.trade_info.forEach(trade => {
+                        const percentageChangeClass = trade.percentage_change > 0 ? 'positive' : 'negative';
+                        const profitClass = trade.profit > 0 ? 'positive' : 'negative';
+                        tradeLogBody.append(`
+                            <tr>
+                                <td>${trade.ticker}</td>
+                                <td>${trade.buy_price}</td>
+                                <td>${trade.shares}</td>
+                                <td>${trade.current_price}</td>
+                                <td class="${percentageChangeClass}">${trade.percentage_change.toFixed(2)}%</td>
+                                <td class="${profitClass}">$${trade.profit.toFixed(2)}</td>
+                                <td>
+                                    <button class="btn btn-primary complete-trade" data-ticker="${trade.ticker}">Complete Trade</button>
+                                </td>
+                            </tr>
+                        `);
+                    });
+                    $('#total_profit').text(response.total_profit.toFixed(2));
+                    $('#total_profit').toggleClass('positive', response.total_profit >= 0).toggleClass('negative', response.total_profit < 0);
                 }
             });
         }
+
+        $(document).on('click', '.complete-trade', function() {
+            const ticker = $(this).data('ticker');
+            $.ajax({
+                url: '/trades/complete',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ ticker: ticker }),
+                success: function(response) {
+                    alert(response.message);
+                    updateTradeLog();
+                }
+            });
+        });
+
+        $('#clearTrades').on('click', function() {
+            $.ajax({
+                url: '/trades/clear',
+                type: 'POST',
+                success: function(response) {
+                    alert(response.message);
+                    updateTradeLog();
+                }
+            });
+        });
+
+        $('#calculateSharpe').on('click', function() {
+            $.ajax({
+                url: '/trades/sharpe',
+                type: 'GET',
+                success: function(response) {
+                    if (response.sharpe_ratio !== undefined) {
+                        $('#sharpe_ratio').text(response.sharpe_ratio.toFixed(2));
+                    } else {
+                        alert(response.message);
+                    }
+                }
+            });
+        });
+
+        $('#resetTotalProfit').on('click', function() {
+            $.ajax({
+                url: '/trades/total_profit',
+                type: 'POST',
+                success: function(response) {
+                    alert(response.message);
+                    updateTradeLog();
+                }
+            });
+        });
+
+        $(document).ready(function() {
+            updateTradeLog();
+        });
     </script>
 </body>
 </html>
+
